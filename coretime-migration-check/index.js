@@ -153,6 +153,14 @@ async function get_coretime_leases(coretime_chain_api) {
         .sort();
 }
 
+async function get_coretime_core_count_inbox(coretime_chain_api) {
+    return parse_pjs_int((await coretime_chain_api.query.broker.coreCountInbox()).toHuman());
+}
+
+async function get_scheduler_num_cores(relay_chain_api) {
+    return parse_pjs_int((await relay_chain_api.query.configuration.activeConfig()).toHuman().schedulerParams.numCores);
+}
+
 async function main() {
     if (process.argv.length === 2) {
         console.error('Missing input: path to runtime binary');
@@ -200,18 +208,19 @@ async function main() {
 
     console.log("Fetching state after migration");
     const legacy_paras_after_migration = await get_legacy_paras(relay_chain_api);
-    const leases_after_migration = await get_legacy_leases(relay_chain_api);
-
     assert_arrays(legacy_paras_before_migration, legacy_paras_after_migration, "Legacy paras");
 
     const coretime_chain_api = await ApiPromise.create({ provider: new WsProvider(coretime_chain_rpc_url) });
+
     const coretime_reservations = await get_coretime_reservations(coretime_chain_api);
     assert_coretime_reservations(system_chains_before_migration, coretime_reservations);
 
     const coretime_leases = await get_coretime_leases(coretime_chain_api);
     assert_coretime_leases(now + 1, leases_before_migration, coretime_leases);
 
-    //TODO: assert scheduler config
+    const num_cores = await get_scheduler_num_cores(relay_chain_api);
+    const core_count_inbox = await get_coretime_core_count_inbox(coretime_chain_api);
+    console.assert(num_cores == core_count_inbox, "Core count mismatch");
 
     console.log("DONE");
 }
