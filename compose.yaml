@@ -1,0 +1,14 @@
+services:
+  chopsticks:
+    image: node:20
+    command:
+      - "npx"
+      - "@acala-network/chopsticks@latest"
+      - "xcm"
+      - "--r=https://raw.githubusercontent.com/AcalaNetwork/chopsticks/master/configs/polkadot.yml"
+      - "--p=/root/data/polkadot-coretime.yml"
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    volumes:
+      - ./chopsticks-vol:/root/data:ro
