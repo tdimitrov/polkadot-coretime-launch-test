@@ -34,7 +34,7 @@ async function perform_runtime_upgrade(api, runtime_binary_path) {
     const code = fs.readFileSync(runtime_binary_path).toString('hex');
     const code_hash = blake2AsHex(`0x${code}`).substring(2);
 
-    // use chopsticks dev_setStorage to inject the call into the scheduler state for the next block.
+    // use chopsticks dev_setStorage to inject a `system.authorizeUpgrade` call into the scheduler state for the next block.
     await api.rpc('dev_setStorage', {
         scheduler: {
             agenda: [
