@@ -148,7 +148,6 @@ async function get_coretime_leases(coretime_chain_api) {
     return (await coretime_chain_api.query.broker.leases())
         .toHuman()
         .map((lease) => {
-            console.log("get_coretime_leases: ", lease)
             return [parse_pjs_int(lease.task), parse_pjs_int(lease.until)];
         })
         .sort();
@@ -161,8 +160,20 @@ async function main() {
       }
 
     const runtime_binary_path = process.argv[2];    // because node script args.... bloody js
+    const relay_chain_rpc_url = process.env.RELAY_CHAIN_RPC;
+    const coretime_chain_rpc_url = process.env.CORETIME_CHAIN_RPC;
 
-    const wsRelayChainProvider = new WsProvider('ws://localhost:8001');
+    if (relay_chain_rpc_url === undefined) {
+        console.error('Missing ENV: RELAY_CHAIN_RPC');
+        process.exit(1);
+    }
+
+    if (coretime_chain_rpc_url === undefined) {
+        console.error('Missing ENV: CORETIME_CHAIN_RPC');
+        process.exit(1);
+    }
+
+    const wsRelayChainProvider = new WsProvider(relay_chain_rpc_url);
     const relay_chain_api = await ApiPromise.create({ provider: wsRelayChainProvider });
 
     const now = (await relay_chain_api.rpc.chain.getHeader()).number.toNumber();
@@ -193,7 +204,7 @@ async function main() {
 
     assert_arrays(legacy_paras_before_migration, legacy_paras_after_migration, "Legacy paras");
 
-    const coretime_chain_api = await ApiPromise.create({ provider: new WsProvider('ws://localhost:8000') });
+    const coretime_chain_api = await ApiPromise.create({ provider: new WsProvider(coretime_chain_rpc_url) });
     const coretime_reservations = await get_coretime_reservations(coretime_chain_api);
     assert_coretime_reservations(system_chains_before_migration, coretime_reservations);
 

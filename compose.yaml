@@ -12,3 +12,16 @@ services:
       - "8001:8001"
     volumes:
       - ./chopsticks-vol:/root/data:ro
+
+  check:
+    image: node:20
+    command:
+      - "node"
+      - "/root/coretime-migration-check/index.js"
+      - "/root/artefacts/polkadot_runtime.compact.compressed.wasm"
+    volumes:
+      - ./coretime-migration-check:/root/coretime-migration-check:ro
+      - ./artefacts:/root/artefacts:ro
+    environment:
+      - RELAY_CHAIN_RPC=ws://chopsticks:8001
+      - CORETIME_CHAIN_RPC=ws://chopsticks:8000
