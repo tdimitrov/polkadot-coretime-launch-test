@@ -4,7 +4,7 @@ const { blake2AsHex } = require('@polkadot/util-crypto');
 
 function sleep(time) {
     return new Promise(resolve => setTimeout(resolve, time));
-  }
+}
 
 async function scheduler_agenda_exists(api) {
     const agenda = await api.query.scheduler.agenda.entries();
@@ -103,15 +103,15 @@ function assert_coretime_leases(now, legacy_leases, coretime_leases) {
     const time_slice_period = 80;
 
     const expected_leases = legacy_leases
-    .filter(([para_id, leases]) => para_id >= 2000 && leases > 0)
-    .map(([para_id, leases]) => {
-        // calculations here are from `migrate_send_assignments_to_coretime_chain`
-        const valid_until = (lease_index + leases) * lease_period;
-        const round_up = (valid_until % time_slice_period > 0) ?  1 : 0;
-        const time_slice = Math.floor(valid_until / time_slice_period) + round_up * time_slice_period;
-        return [para_id, time_slice];
-    })
-    .sort();
+        .filter(([para_id, leases]) => para_id >= 2000 && leases > 0)
+        .map(([para_id, leases]) => {
+            // calculations here are from `migrate_send_assignments_to_coretime_chain`
+            const valid_until = (lease_index + leases) * lease_period;
+            const round_up = (valid_until % time_slice_period > 0) ? 1 : 0;
+            const time_slice = Math.floor(valid_until / time_slice_period) + round_up * time_slice_period;
+            return [para_id, time_slice];
+        })
+        .sort();
 
     console.log("Legacy leases: ", legacy_leases);
     console.log("Expected leases: ", expected_leases);
@@ -122,7 +122,7 @@ function assert_coretime_leases(now, legacy_leases, coretime_leases) {
         if (idx == -1) {
             console.log("Entry for para id not found", expected_leases[i]);
         } else if (expected_leases[i][1] != coretime_leases[idx][1]) {
-                console.log("Entry found but time slices doesn't match", expected_leases[i], coretime_leases[idx]);
+            console.log("Entry found but time slices doesn't match", expected_leases[i], coretime_leases[idx]);
         }
     }
 }
@@ -157,7 +157,7 @@ async function main() {
     if (process.argv.length === 2) {
         console.error('Missing input: path to runtime binary');
         process.exit(1);
-      }
+    }
 
     const runtime_binary_path = process.argv[2];    // because node script args.... bloody js
     const relay_chain_rpc_url = process.env.RELAY_CHAIN_RPC;
@@ -209,7 +209,7 @@ async function main() {
     assert_coretime_reservations(system_chains_before_migration, coretime_reservations);
 
     const coretime_leases = await get_coretime_leases(coretime_chain_api);
-    assert_coretime_leases(now+1, leases_before_migration, coretime_leases);
+    assert_coretime_leases(now + 1, leases_before_migration, coretime_leases);
 
     //TODO: assert scheduler config
 
