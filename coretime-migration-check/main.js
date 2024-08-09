@@ -1,10 +1,6 @@
 // Import
-const { ApiPromise, WsProvider, Keyring } = require('@polkadot/api');
-const { blake2AsHex } = require('@polkadot/util-crypto');
-
-function sleep(time) {
-    return new Promise(resolve => setTimeout(resolve, time));
-}
+const { ApiPromise, WsProvider } = require('@polkadot/api');
+const helpers = require('./helpers');
 
 async function scheduler_agenda_exists(api) {
     const agenda = await api.query.scheduler.agenda.entries();
@@ -22,60 +18,6 @@ async function scheduler_agenda_exists(api) {
     return agenda_found;
 }
 
-async function perform_runtime_upgrade(api, runtime_binary_path) {
-    const fs = require('fs');
-
-    // Grab the block number of the current head
-    // api is already imported, no need to add anything but the following.
-    const number = (await api.rpc.chain.getHeader()).number.toNumber()
-
-    const code = fs.readFileSync(runtime_binary_path).toString('hex');
-    const code_hash = blake2AsHex(`0x${code}`).substring(2);
-
-    // use chopsticks dev_setStorage to inject the call into the scheduler state for the next block.
-    await api.rpc('dev_setStorage', {
-        scheduler: {
-            agenda: [
-                [
-                    [number + 1], [
-                        {
-                            call: {
-                                Inline: `0x0009${code_hash}`
-                            },
-                            origin: {
-                                system: 'Root'
-                            }
-                        }
-                    ]
-                ]
-            ]
-        }
-    })
-    // Make a block to include the extrinsic
-    await api.rpc('dev_newBlock', { count: 1 });
-
-    await api.tx.system.applyAuthorizedUpgrade(`0x${code}`).send();
-    await api.rpc('dev_newBlock', { count: 1 });
-}
-
-//
-// helpers
-//
-function parachain_id_is_system_chain(id) {
-    return id < 2000;
-}
-
-function assert_arrays(before, after, msg) {
-    if (before.length != after.length) {
-        console.log(`${msg} count mismatch: ${before.length} != ${after.length}`);
-    }
-    for (let i = 0; i < before.length; i++) {
-        if (before[i] != after[i]) {
-            console.assert(false, `${msg} mismatch: ${before[i]} != ${after[i]}`);
-        }
-    }
-}
-
 function assert_coretime_reservations(system_chains, coretime_reservation) {
     console.assert(system_chains.length == coretime_reservation.length, "System reservation count mismatch");
 
@@ -83,7 +25,7 @@ function assert_coretime_reservations(system_chains, coretime_reservation) {
         console.assert(para.length == 1, "Coretime reservation entry is not a single entry");
         console.assert(para[0].mask == '0xffffffffffffffffffff', "Coretime reservation mask mismatch");
 
-        return parse_pjs_int(para[0].assignment.Task); // TODO: this can be a `Pool` too but not in this migration
+        return helpers.parse_pjs_int(para[0].assignment.Task); // TODO: this can be a `Pool` too but not in this migration
     });
 
     console.assert(system_chains.length > 0, "No system chains found");
@@ -127,17 +69,13 @@ function assert_coretime_leases(now, legacy_leases, coretime_leases) {
     }
 }
 
-function parse_pjs_int(input) {
-    return parseInt(input.replace(/,/g, ''));
-}
-
 async function get_legacy_paras(relay_chain_api) {
-    return (await relay_chain_api.query.paras.parachains()).toHuman().map((para_id) => parse_pjs_int(para_id));
+    return (await relay_chain_api.query.paras.parachains()).toHuman().map((para_id) => helpers.parse_pjs_int(para_id));
 }
 
 //Return number of leases per para iad
 async function get_legacy_leases(relay_chain_api) {
-    return (await relay_chain_api.query.slots.leases.entries()).map(([key, value]) => [parse_pjs_int(key.toHuman()[0]), value.toHuman().length]).sort();
+    return (await relay_chain_api.query.slots.leases.entries()).map(([key, value]) => [helpers.parse_pjs_int(key.toHuman()[0]), value.toHuman().length]).sort();
 }
 
 async function get_coretime_reservations(coretime_chain_api) {
@@ -148,17 +86,17 @@ async function get_coretime_leases(coretime_chain_api) {
     return (await coretime_chain_api.query.broker.leases())
         .toHuman()
         .map((lease) => {
-            return [parse_pjs_int(lease.task), parse_pjs_int(lease.until)];
+            return [helpers.parse_pjs_int(lease.task), helpers.parse_pjs_int(lease.until)];
         })
         .sort();
 }
 
 async function get_coretime_core_count_inbox(coretime_chain_api) {
-    return parse_pjs_int((await coretime_chain_api.query.broker.coreCountInbox()).toHuman());
+    return helpers.parse_pjs_int((await coretime_chain_api.query.broker.coreCountInbox()).toHuman());
 }
 
 async function get_scheduler_num_cores(relay_chain_api) {
-    return parse_pjs_int((await relay_chain_api.query.configuration.activeConfig()).toHuman().schedulerParams.numCores);
+    return helpers.parse_pjs_int((await relay_chain_api.query.configuration.activeConfig()).toHuman().schedulerParams.numCores);
 }
 
 async function main() {
@@ -194,12 +132,12 @@ async function main() {
     console.log("Fetching state before migration");
     const legacy_paras_before_migration = await get_legacy_paras(relay_chain_api);
     const leases_before_migration = await get_legacy_leases(relay_chain_api);
-    const system_chains_before_migration = legacy_paras_before_migration.filter((para_id) => parachain_id_is_system_chain(para_id));
+    const system_chains_before_migration = legacy_paras_before_migration.filter((para_id) => helpers.parachain_id_is_system_chain(para_id));
 
     console.log("Upgrading runtime");
-    await perform_runtime_upgrade(relay_chain_api, runtime_binary_path);
+    await helpers.perform_runtime_upgrade(relay_chain_api, runtime_binary_path);
     // TODO: wait for the runtime migration to complete
-    await sleep(2000);
+    await helpers.sleep(2000);
     console.log("Upgrade complete");
 
     // Agenda should exist before the migration
@@ -208,7 +146,7 @@ async function main() {
 
     console.log("Fetching state after migration");
     const legacy_paras_after_migration = await get_legacy_paras(relay_chain_api);
-    assert_arrays(legacy_paras_before_migration, legacy_paras_after_migration, "Legacy paras");
+    helpers.assert_arrays(legacy_paras_before_migration, legacy_paras_after_migration, "Legacy paras");
 
     const coretime_chain_api = await ApiPromise.create({ provider: new WsProvider(coretime_chain_rpc_url) });
 
