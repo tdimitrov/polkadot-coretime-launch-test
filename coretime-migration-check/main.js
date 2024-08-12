@@ -160,6 +160,9 @@ async function main() {
     const core_count_inbox = await get_coretime_core_count_inbox(coretime_chain_api);
     console.assert(num_cores == core_count_inbox, "Core count mismatch");
 
+    // The migration itself is not supposed to create any pools but if this changes - log it
+    console.assert(legacy_paras_after_migration.length == num_cores, "Pool creation should be verified");
+
     console.log("DONE");
 }
 
