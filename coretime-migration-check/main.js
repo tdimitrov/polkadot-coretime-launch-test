@@ -135,7 +135,7 @@ async function main() {
     await helpers.sleep(2000);
     console.log("Upgrade complete");
 
-    // Agenda should exist before the migration
+    // Agenda should not exist after the migration
     console.log("Checking scheduler agenda");
     console.assert(!await scheduler_agenda_exists(relay_chain_api), 'Agenda entry is not removed');
 
