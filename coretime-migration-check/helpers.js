@@ -20,6 +20,15 @@ function assert_arrays(before, after, msg) {
     }
 }
 
+function assert_array_of_arrays(before, after, msg) {
+    if (before.length != after.length) {
+        console.log(`${msg} count mismatch: ${before.length} != ${after.length}`);
+    }
+    for (let i = 0; i < before.length; i++) {
+        assert_arrays(before[i], after[i], `${msg} at index ${i}`);
+    }
+}
+
 function parse_pjs_int(input) {
     return parseInt(input.replace(/,/g, ''));
 }
@@ -61,4 +70,4 @@ async function perform_runtime_upgrade(api, runtime_binary_path) {
 }
 
 
-module.exports = { sleep, parachain_id_is_system_chain, assert_arrays, parse_pjs_int, perform_runtime_upgrade };
+module.exports = { sleep, parachain_id_is_system_chain, assert_arrays, assert_array_of_arrays, parse_pjs_int, perform_runtime_upgrade };

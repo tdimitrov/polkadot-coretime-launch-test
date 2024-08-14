@@ -19,7 +19,7 @@ async function scheduler_agenda_exists(api) {
 }
 
 function assert_coretime_reservations(system_chains, coretime_reservation) {
-    console.assert(system_chains.length == coretime_reservation.length, "System reservation count mismatch");
+    console.assert(system_chains.length == coretime_reservation.length, `System reservation count mismatch - system chains len: ${system_chains.length} coretime reservation len: ${coretime_reservation.length}`);
 
     const coretime_reservation_paras = coretime_reservation.map((para) => {
         console.assert(para.length == 1, "Coretime reservation entry is not a single entry");
@@ -31,7 +31,7 @@ function assert_coretime_reservations(system_chains, coretime_reservation) {
     console.assert(system_chains.length > 0, "No system chains found");
 
     for (let i = 0; i < system_chains.length; i++) {
-        console.assert(coretime_reservation_paras.includes(system_chains[i]), "System reservation mismatch");
+        console.assert(coretime_reservation_paras.includes(system_chains[i]), `System reservation mismatch for para id ${system_chains[i]}`);
     }
 
     return false;
@@ -69,11 +69,7 @@ function assert_coretime_leases(now, legacy_leases, coretime_leases) {
     }
 }
 
-async function get_legacy_paras(relay_chain_api) {
-    return (await relay_chain_api.query.paras.parachains()).toHuman().map((para_id) => helpers.parse_pjs_int(para_id));
-}
-
-//Return number of leases per para iad
+//Return number of leases per para id
 async function get_legacy_leases(relay_chain_api) {
     return (await relay_chain_api.query.slots.leases.entries()).map(([key, value]) => [helpers.parse_pjs_int(key.toHuman()[0]), value.toHuman().length]).sort();
 }
@@ -130,9 +126,8 @@ async function main() {
     console.assert(await scheduler_agenda_exists(relay_chain_api), 'Agenda entry not found');
 
     console.log("Fetching state before migration");
-    const legacy_paras_before_migration = await get_legacy_paras(relay_chain_api);
     const leases_before_migration = await get_legacy_leases(relay_chain_api);
-    const system_chains_before_migration = legacy_paras_before_migration.filter((para_id) => helpers.parachain_id_is_system_chain(para_id));
+    const system_leases_before_migration = leases_before_migration.map(([para_id, _]) => para_id).filter((para_id) => helpers.parachain_id_is_system_chain(para_id));
 
     console.log("Upgrading runtime");
     await helpers.perform_runtime_upgrade(relay_chain_api, runtime_binary_path);
@@ -145,13 +140,13 @@ async function main() {
     console.assert(!await scheduler_agenda_exists(relay_chain_api), 'Agenda entry is not removed');
 
     console.log("Fetching state after migration");
-    const legacy_paras_after_migration = await get_legacy_paras(relay_chain_api);
-    helpers.assert_arrays(legacy_paras_before_migration, legacy_paras_after_migration, "Legacy paras");
+    const leases_after_migration = await get_legacy_leases(relay_chain_api);
+    helpers.assert_array_of_arrays(leases_before_migration, leases_after_migration, "Leases");
 
     const coretime_chain_api = await ApiPromise.create({ provider: new WsProvider(coretime_chain_rpc_url) });
 
     const coretime_reservations = await get_coretime_reservations(coretime_chain_api);
-    assert_coretime_reservations(system_chains_before_migration, coretime_reservations);
+    assert_coretime_reservations(system_leases_before_migration, coretime_reservations);
 
     const coretime_leases = await get_coretime_leases(coretime_chain_api);
     assert_coretime_leases(now + 1, leases_before_migration, coretime_leases);
@@ -161,9 +156,10 @@ async function main() {
     console.assert(num_cores == core_count_inbox, "Core count mismatch");
 
     // The migration itself is not supposed to create any pools but if this changes - log it
-    console.assert(legacy_paras_after_migration.length == num_cores, "Pool creation should be verified");
+    const active_leases_after_migration = leases_after_migration.filter(([_, leases]) => leases > 0);
+    console.assert(active_leases_after_migration.length == num_cores, `Pool creation should be verified. Non zero leases: ${active_leases_after_migration.length} num_cores: ${num_cores}`);
 
-    console.log("DONE");
+    console.log("Done. Inspect the output for failed assertions.");
 }
 
 main().catch(console.error).finally(() => process.exit());
