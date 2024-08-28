@@ -50,7 +50,7 @@ function assert_coretime_leases(now, legacy_leases, coretime_leases) {
             // calculations here are from `migrate_send_assignments_to_coretime_chain`
             const valid_until = (lease_index + leases) * lease_period;
             const round_up = (valid_until % time_slice_period > 0) ? 1 : 0;
-            const time_slice = Math.floor(valid_until / time_slice_period) + round_up * time_slice_period;
+            const time_slice = Math.floor(valid_until / time_slice_period) + round_up;
             return [para_id, time_slice];
         })
         .sort();
@@ -115,8 +115,7 @@ async function main() {
         process.exit(1);
     }
 
-    const wsRelayChainProvider = new WsProvider(relay_chain_rpc_url);
-    const relay_chain_api = await ApiPromise.create({ provider: wsRelayChainProvider });
+    const relay_chain_api = await ApiPromise.create({ provider: new WsProvider(relay_chain_rpc_url) });
 
     const now = (await relay_chain_api.rpc.chain.getHeader()).number.toNumber();
     console.log("Current block number", now);
