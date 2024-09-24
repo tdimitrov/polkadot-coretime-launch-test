@@ -5,7 +5,7 @@ services:
       - "npx"
       - "@acala-network/chopsticks@latest"
       - "xcm"
-      - "--r=https://raw.githubusercontent.com/AcalaNetwork/chopsticks/master/configs/polkadot.yml"
+      - "--r=/root/data/polkadot.yml"
       - "--p=/root/data/polkadot-coretime.yml"
     ports:
       - "8000:8000"

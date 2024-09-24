@@ -9,6 +9,11 @@ async function scheduler_agenda_exists(api) {
         if (value.isEmpty) {
             return;
         }
+
+        if (value[0].toHuman() == null) {
+            return;
+        }
+
         if (value[0].toHuman().maybeId != '0x87a871b4d621f0b973475aafcc32610bd7688f1502338acd00ee488ac3620f4c') {
             return;
         }
