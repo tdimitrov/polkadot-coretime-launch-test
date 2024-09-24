@@ -12,6 +12,7 @@ services:
       - "8001:8001"
     volumes:
       - ./chopsticks-vol:/root/data:ro
+      - ./artefacts:/root/artefacts:ro
 
   check:
     image: node:20

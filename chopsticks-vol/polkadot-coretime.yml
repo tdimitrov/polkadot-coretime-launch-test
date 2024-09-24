@@ -1,7 +1,11 @@
 genesis: /root/data/coretime-polkadot.chainspec.json
+# endpoint:
+#   - wss://polkadot-coretime-rpc.polkadot.io
 mock-signature-host: true
-block: 0
+# block: 86407
 db: ./db.sqlite
+runtime-log-level: 5
+wasm-override: /root/artefacts/coretime_polkadot_runtime.compact.compressed.wasm
 
 import-storage:
   System:
